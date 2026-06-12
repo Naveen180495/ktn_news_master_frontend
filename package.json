@@ -1,0 +1,42 @@
+{
+	"main": "main.cjs",
+	"name": "ktn-pos",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"package": "npm run build && powershell -Command \"(Get-Content build/index.html) -replace '/_app', './_app' | Set-Content build/index.html\" && electron-builder build --win --ia32 --dir"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.57.0",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"electron": "^41.2.0",
+		"electron-builder": "^26.8.1",
+		"svelte": "^5.55.2",
+		"vite": "^8.0.7"
+	},
+	"build": {
+		"appId": "com.ktn.pos",
+		"productName": "KTN Food and Wine",
+		"directories": {
+			"output": "dist-exe"
+		},
+		"files": [
+			"build/**/*",
+			"main.cjs",
+			"package.json"
+		],
+		"win": {
+			"target": "portable"
+		},
+		"extraResources": [
+			"backend.jar",
+			"jre/**/*"
+		]
+	}
+}
