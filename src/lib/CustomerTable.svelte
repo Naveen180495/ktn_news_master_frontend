@@ -67,7 +67,7 @@
 			{:else}
 				<tr>
 					<td colspan="4" style="text-align: center; padding: 2rem; color: #636e72;">
-						No customers found. Click "+ New Customer" to start.
+						No customers found. Click "+ Add Customer" to start.
 					</td>
 				</tr>
 			{/each}

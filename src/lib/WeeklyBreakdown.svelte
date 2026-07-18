@@ -156,13 +156,13 @@
         <button class="ghost-back-btn" onclick={onBack}>← Back to Ledger</button
         >
         <button type="button" class="primary-btn" onclick={submitFormUpdates}>
-            Update Account Ledger
+            Save
         </button>
     </div>
 
     <div class="parameter-card-row">
         <div class="input-form-group">
-            <label for="date-code">Week Date Code</label>
+            <label for="date-code">Date</label>
             <input
                 id="date-code"
                 type="text"
@@ -172,7 +172,7 @@
             />
         </div>
         <div class="input-form-group">
-            <label for="delivery-fee">Weekly Delivery Charge (£)</label>
+            <label for="delivery-fee">Delivery Charge (£)</label>
             <input
                 id="delivery-fee"
                 type="number"
@@ -464,7 +464,6 @@
         font-size: 12px;
         font-weight: 700;
         color: #4a5568;
-        text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
