@@ -13,6 +13,8 @@
   import PaperForm from "$lib/PaperForm.svelte";
   import RoundsTable from "$lib/RoundsTable.svelte";
   import RoundForm from "$lib/RoundForm.svelte";
+  import DeliveriesDashboard from "$lib/DeliveriesDashboard.svelte";
+  import DeliveryNotePrintView from "$lib/DeliveryNotePrintView.svelte";
 
   let isAuthenticated = $state(false);
   let activeTab = $state("dashboard");
@@ -33,10 +35,12 @@
   let deliveriesSubView = $state("menu"); // "menu", "weekly", "monthly"
   let monthlyBillsData = $state([]); // Holds processed raw backend rows for all active accounts
   let weeklyBillsData = $state([]); // Holds processed raw backend rows for all active accounts
+  let deliveryNoteData = $state(null);
 
   // Confirmation Modal state controls
   let showConfirmModal = $state(false);
   let isSubmitting = $state(false);
+  let addFromYearStart = $state(false);
 
   // Single Invoice Print Controller States
   let isSingleBillOpen = $state(false);
@@ -52,8 +56,8 @@
       })
       .reduce(
         (sum, w) => (w.status !== "paid" ? sum + w.outstandingAmount : sum),
-        0
-      )
+        0,
+      ),
   );
 
   let totalDueTillSelectedWeek = $derived(
@@ -71,7 +75,7 @@
         }
       }
       return sum;
-    }, 0)
+    }, 0),
   );
 
   // Voucher Modal State Controls
@@ -112,7 +116,7 @@
   let availableMonths = $derived(
     selectedYear === currentYear
       ? allMonths.filter((m) => m.value <= currentMonthNumber)
-      : allMonths
+      : allMonths,
   );
 
   // Input Form State (Initially bound to current parameters)
@@ -120,6 +124,8 @@
   let selectedMonth = $state(currentMonthNumber);
   let selectedWeekDate = $state(null);
   let customNoteText = $state("");
+
+  let selectedDeliveryNoteDate = $state(null);
 
   $effect(() => {
     if (activeSelectedWeek) {
@@ -244,20 +250,20 @@
   }
 
   async function saveRound(roundData) {
-	try {
-	  const res = await fetch("http://localhost:8080/api/rounds/add", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(roundData),
-	  });
-	  if (res.ok) {
-		alert("Round saved successfully!");
-		activeTab = "rounds";
-		loadRounds();
-	  }
-	} catch (err) {
-	  console.error(err);
-	}
+    try {
+      const res = await fetch("http://localhost:8080/api/rounds/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(roundData),
+      });
+      if (res.ok) {
+        alert("Round saved successfully!");
+        activeTab = "rounds";
+        loadRounds();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function updateCustomer(customerData) {
@@ -268,7 +274,7 @@
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(customerData),
-        }
+        },
       );
       if (res.ok) {
         alert("Customer saved successfully!");
@@ -292,7 +298,7 @@
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(paperData),
-        }
+        },
       );
       if (res.ok) {
         alert("Paper saved successfully!");
@@ -309,34 +315,34 @@
   }
 
   async function updateRound(roundData) {
-	try {
-	  const res = await fetch(
-		`http://localhost:8080/api/rounds/update/${roundData.round}`,
-		{
-		  method: "PUT",
-		  headers: { "Content-Type": "application/json" },
-		  body: JSON.stringify(roundData),
-		}
-	  );
-	  if (res.ok) {
-		alert("Round saved successfully!");
-		selectedRound = roundData;
-		if (activeTab === "view-round") {
-		  activeTab = "after-update-round";
-		} else {
-		  activeTab = "view-round";
-		}
-	  }
-	} catch (err) {
-	  console.error(err);
-	}
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/rounds/update/${roundData.round}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(roundData),
+        },
+      );
+      if (res.ok) {
+        alert("Round saved successfully!");
+        selectedRound = roundData;
+        if (activeTab === "view-round") {
+          activeTab = "after-update-round";
+        } else {
+          activeTab = "view-round";
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function deleteCustomer(form) {
     if (confirm(`Delete ${form.forename} ${form.surname}?`)) {
       const res = await fetch(
         `http://localhost:8080/api/customers/delete/${form.acNo}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
       if (res.ok) {
         activeTab = "customers";
@@ -349,7 +355,7 @@
     if (confirm(`Delete ${paperData.name}?`)) {
       const res = await fetch(
         `http://localhost:8080/api/papers/delete/${paperData.id}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
       if (res.ok) {
         activeTab = "papers";
@@ -359,16 +365,16 @@
   }
 
   async function deleteRound(roundData) {
-	if (confirm(`Delete ${roundData.round}?`)) {
-	  const res = await fetch(
-		`http://localhost:8080/api/rounds/delete/${roundData.round}`,
-		{ method: "DELETE" }
-	  );
-	  if (res.ok) {
-		activeTab = "rounds";
-		loadRounds();
-	  }
-	}
+    if (confirm(`Delete ${roundData.round}?`)) {
+      const res = await fetch(
+        `http://localhost:8080/api/rounds/delete/${roundData.round}`,
+        { method: "DELETE" },
+      );
+      if (res.ok) {
+        activeTab = "rounds";
+        loadRounds();
+      }
+    }
   }
 
   async function fetchLedger(acNo) {
@@ -376,7 +382,7 @@
       // Extract the current calendar year dynamically
       const currentYear = new Date().getFullYear();
       const res = await fetch(
-        `http://localhost:8080/api/ledger/${String(acNo).trim()}/${currentYear}`
+        `http://localhost:8080/api/ledger/${String(acNo).trim()}/${currentYear}`,
       );
       if (res.ok) {
         const rawWeeks = await res.json();
@@ -398,6 +404,7 @@
         acNo: selectedCustomer.acNo,
         weekDate: activeSelectedWeek.date,
         outstandingAmount: activeSelectedWeek.amount,
+        addFromYearStart: addFromYearStart,
       };
 
       const res = await fetch(
@@ -406,24 +413,24 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }
+        },
       );
       if (res.ok) {
         alert(
-          "Subscription successfully configured for the chosen calendar week sequence."
+          "Subscription successfully configured for the chosen calendar week sequence.",
         );
         showConfirmModal = false;
         await fetchLedger(selectedCustomer.acNo);
       } else {
         const errData = await res.json().catch(() => ({}));
         alert(
-          `Failed to add subscription: ${errData.message || res.statusText}`
+          `Failed to add subscription: ${errData.message || res.statusText}`,
         );
       }
     } catch (err) {
       console.error("Subscription Error:", err);
       alert(
-        "A communications error occurred while validating database persistence rows."
+        "A communications error occurred while validating database persistence rows.",
       );
     } finally {
       isSubmitting = false;
@@ -441,7 +448,7 @@
             acNo: selectedCustomer.acNo,
             ...updatedPayload,
           }),
-        }
+        },
       );
       if (res.ok) {
         alert("Weekly breakdown itemizations updated and saved successfully!");
@@ -509,7 +516,7 @@
     try {
       const currentYear = new Date().getFullYear();
       const res = await fetch(
-        `http://localhost:8080/api/payment/get-history/${String(acNo).trim()}/${currentYear}`
+        `http://localhost:8080/api/payment/get-history/${String(acNo).trim()}/${currentYear}`,
       );
       if (res.ok) {
         paymentHistoryList = await res.json();
@@ -519,11 +526,14 @@
     }
   }
 
-  async function handleMonthlyBillGenerate() {
+  async function handleMonthlyBillGenerate({ year, month, note }) {
     showMonthlyBillingDialog = false;
+    selectedYear = year;
+    selectedMonth = month;
+    customNoteText = note;
     try {
       const response = await fetch(
-        `http://localhost:8080/api/billing/monthly-bills/${selectedYear}/${selectedMonth}`
+        `http://localhost:8080/api/billing/monthly-bills/${selectedYear}/${selectedMonth}`,
       );
       if (!response.ok)
         throw new Error("Failed to fetch bill metrics from server");
@@ -543,11 +553,12 @@
     }
   }
 
-  async function handleWeeklyBillGenerate() {
+  async function handleWeeklyBillGenerate({ weekDate }) {
     showWeeklyBillingDialog = false;
+    selectedWeekDate = weekDate;
     try {
       const response = await fetch(
-        `http://localhost:8080/api/billing/weekly-bill/${selectedWeekDate}`
+        `http://localhost:8080/api/billing/weekly-bill/${selectedWeekDate}`,
       );
       if (!response.ok)
         throw new Error("Failed to fetch bill metrics from server");
@@ -566,6 +577,21 @@
     }
   }
 
+  async function handleDeliveryNoteGenerate({ date }) {
+    try {
+      selectedDeliveryNoteDate = date;
+      const response = await fetch(
+        `http://localhost:8080/api/deliveries/delivery-note/${selectedDeliveryNoteDate}`,
+      );
+      if (response.ok) {
+        deliveryNoteData = await response.json();
+        deliveriesSubView = "delivery-note";
+      }
+    } catch (err) {
+      console.error("Error fetching delivery note:", err);
+    }
+  }
+
   // Handler function triggered by the existing list action button
   function triggerSingleBillView(customer) {
     targetSingleCustomer = customer;
@@ -580,7 +606,7 @@
     if (activeTab === "papers" && isAuthenticated) {
       loadPapers();
     }
-	if (activeTab === "rounds" && isAuthenticated) {
+    if (activeTab === "rounds" && isAuthenticated) {
       loadRounds();
     }
     if (activeTab === "deliveries") {
@@ -623,6 +649,12 @@
     selectedDate={selectedWeekDate}
     onBack={() => (deliveriesSubView = "menu")}
   />
+{:else if activeTab === "deliveries" && deliveriesSubView === "delivery-note"}
+  <DeliveryNotePrintView
+    data={deliveryNoteData}
+    selectedDate={selectedDeliveryNoteDate}
+    onBack={() => (deliveriesSubView = "menu")}
+  />
 {:else}
   <div class="dashboard-wrapper">
     <Sidebar
@@ -643,45 +675,11 @@
           </p>
         </div>
       {:else if activeTab === "deliveries"}
-        {#if deliveriesSubView === "menu"}
-          <div class="deliveries-menu-container">
-            <h2>Deliveries Billing Dashboard</h2>
-            <p class="section-subtitle">
-              Select statement interval type to compile and generate customer
-              invoice spreadsheets.
-            </p>
-
-            <div class="billing-options-grid">
-              <button
-                class="billing-card-btn"
-                onclick={() => {
-                  showWeeklyBillingDialog = true;
-                }}
-              >
-                <div class="card-icon">📅</div>
-                <h3>Weekly Bill</h3>
-                <p>
-                  Prepare active 7-day balance registers for layout sheets
-                  distribution round orders.
-                </p>
-              </button>
-
-              <button
-                class="billing-card-btn highlight"
-                onclick={() => {
-                  showMonthlyBillingDialog = true;
-                }}
-              >
-                <div class="card-icon">📊</div>
-                <h3>Monthly Bill</h3>
-                <p>
-                  Generate high-fidelity consolidated statement logs spanning
-                  complete days of current active fiscal month duration.
-                </p>
-              </button>
-            </div>
-          </div>
-        {/if}
+        <DeliveriesDashboard
+          onOpenWeekly={handleWeeklyBillGenerate}
+          onOpenMonthly={handleMonthlyBillGenerate}
+          onOpenDeliveryNote={handleDeliveryNoteGenerate}
+        />
       {:else if activeTab === "customers"}
         <CustomerTable
           {customerList}
@@ -806,7 +804,7 @@
             <button
               class="action-btn"
               onclick={() => triggerSingleBillView(selectedCustomer)}
-              >View Bill</button
+              >Generate Bill</button
             >
           </div>
 
@@ -853,7 +851,7 @@
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        }
+                        },
                       )}
                     </p>
                     <p>
@@ -955,6 +953,15 @@
         </div>
       </div>
       <div class="modal-footer-actions">
+        <label for="confirmCheckbox" class="checkbox-wrapper">
+          <input
+            type="checkbox"
+            id="confirmCheckbox"
+            bind:checked={addFromYearStart}
+            disabled={isSubmitting}
+          />
+          Add subscription from year start
+        </label>
         <button
           class="modal-btn cancel"
           disabled={isSubmitting}
@@ -965,7 +972,7 @@
           disabled={isSubmitting}
           onclick={confirmAddSubscription}
         >
-          {isSubmitting ? "Processing..." : "Confirm & Save Entry"}
+          {isSubmitting ? "Processing..." : "Confirm Save"}
         </button>
       </div>
     </div>
@@ -1125,93 +1132,11 @@
     </div>
   </div>
 {/if}
-{#if showMonthlyBillingDialog}
-  <div class="modal-backdrop">
-    <div class="dialog-box">
-      <div class="dialog-header">
-        <h3>Generate Monthly Statements</h3>
-        <button
-          class="close-x-btn"
-          onclick={() => (showMonthlyBillingDialog = false)}>&times;</button
-        >
-      </div>
-
-      <div class="dialog-body">
-        <div class="form-row-split">
-          <div class="input-group">
-            <label for="bill-year">Target Billing Year</label>
-            <select id="bill-year" bind:value={selectedYear}>
-              {#each dynamicYears as year}
-                <option value={year}>{year}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="input-group">
-            <label for="bill-month">Target Billing Month</label>
-            <select id="bill-month" bind:value={selectedMonth}>
-              {#each availableMonths as month}
-                <option value={month.value}>{month.name}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-
-        <div class="input-group full-width">
-          <label for="bill-notes">Customer Disclaimer Note Message</label>
-          <textarea id="bill-notes" rows="4" bind:value={customNoteText}
-          ></textarea>
-        </div>
-      </div>
-
-      <div class="dialog-footer">
-        <button
-          class="cancel-modal-btn"
-          onclick={() => (showMonthlyBillingDialog = false)}>Cancel</button
-        >
-        <button class="confirm-modal-btn" onclick={handleMonthlyBillGenerate}
-          >Generate Bills</button
-        >
-      </div>
-    </div>
-  </div>
-{/if}
-{#if showWeeklyBillingDialog}
-  <div class="modal-backdrop">
-    <div class="dialog-box">
-      <div class="dialog-header">
-        <h3>Generate Weekly Statements</h3>
-        <button
-          class="close-x-btn"
-          onclick={() => (showWeeklyBillingDialog = false)}>&times;</button
-        >
-      </div>
-
-      <div class="dialog-body">
-        <div class="form-row-split">
-          <div class="input-group">
-            <label for="bill-week">Target Billing Week</label>
-            <input id="bill-week" type="date" bind:value={selectedWeekDate} />
-          </div>
-        </div>
-      </div>
-
-      <div class="dialog-footer">
-        <button
-          class="cancel-modal-btn"
-          onclick={() => (showWeeklyBillingDialog = false)}>Cancel</button
-        >
-        <button class="confirm-modal-btn" onclick={handleWeeklyBillGenerate}
-          >Generate Bills</button
-        >
-      </div>
-    </div>
-  </div>
-{/if}
 
 <IndividualBillView
   customer={targetSingleCustomer}
   bind:isOpen={isSingleBillOpen}
+  onClose={(acNo) => fetchLedger(acNo)}
 />
 
 <style>
@@ -1452,9 +1377,24 @@
 
   .modal-footer-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 12px;
     margin-top: 20px;
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #ecf0f1;
+    margin-right: auto; /* Pushes buttons to the right while pinning checkbox to left */
+    cursor: pointer;
+  }
+
+  .checkbox-wrapper input[type="checkbox"] {
+    cursor: pointer;
   }
 
   .modal-btn {

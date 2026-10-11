@@ -148,9 +148,7 @@
             </p>
             <p class="breadcrumbs">
                 Name: <span class="highlight"
-                    >{customerData?.forename || "John"}
-                    {customerData?.surname || "Smith"}
-                </span>
+                    >{customerData?.title} {customerData?.forename} {customerData?.surname}</span>
             </p>
         </div>
         <button class="ghost-back-btn" onclick={onBack}>← Back to Ledger</button

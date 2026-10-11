@@ -1,6 +1,6 @@
 <script>
 	// 1. Destructure using Svelte 5 bindable state syntax parameters
-	let { customer, isOpen = $bindable(false) } = $props();
+	let { customer, isOpen = $bindable(false), onClose } = $props();
 
 	// Real-time date boundary thresholds
 	const currentYear = new Date().getFullYear();
@@ -86,6 +86,11 @@
 		showPreviewScreen = false;
 		isOpen = false; // This triggers an upward bind state mutation back to +page.svelte seamlessly!
 		invoiceData = null;
+
+		// Call the fetch callback with the current customer account number
+		if (onClose && customer?.acNo) {
+			onClose(customer.acNo);
+		}
 	}
 
 	/**
@@ -202,9 +207,9 @@
 	<div class="print-window-wrapper">
 		<div class="screen-header no-print">
 			<button class="back-btn" onclick={() => (showPreviewScreen = false)}
-				>← Modify Parameters</button
+				>← Back</button
 			>
-			<div class="bar-title">Statement Live Screen Preview</div>
+			<div class="bar-title">Monthly Statement Preview</div>
 			<div class="right-actions">
 				<button class="print-btn" onclick={triggerHardwarePrint}
 					>🖨️ Print Statement</button
