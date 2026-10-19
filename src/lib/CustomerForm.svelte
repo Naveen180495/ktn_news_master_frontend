@@ -29,7 +29,7 @@
           cancelDate: "",
           restartDate: "",
           deliveryCharge: 0,
-        }
+        },
   );
 
   // Suggestions Data Repositories (Can be loaded from properties or an API)
@@ -102,17 +102,19 @@
   });
 
   let dailyAndWeeklyPapersTotal = $derived(
-    papers.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0).toFixed(2)
+    papers.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0).toFixed(2),
   );
   let weeklyMagazinesTotal = $derived(
-    magazines.reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0).toFixed(2)
+    magazines
+      .reduce((sum, m) => sum + (parseFloat(m.price) || 0), 0)
+      .toFixed(2),
   );
   let finalWeeklyTotal = $derived(
     String(
       Number(form.deliveryCharge || 0) +
         Number(dailyAndWeeklyPapersTotal) +
-        Number(weeklyMagazinesTotal)
-    )
+        Number(weeklyMagazinesTotal),
+    ),
   );
 
   function addPaperRow() {
@@ -196,7 +198,7 @@
       magazines = JSON.parse(JSON.stringify(structuralMagazines));
       originalBackup.papers = JSON.parse(JSON.stringify(structuralPapers));
       originalBackup.magazines = JSON.parse(
-        JSON.stringify(structuralMagazines)
+        JSON.stringify(structuralMagazines),
       );
       originalBackup.profile = JSON.parse(JSON.stringify(form));
     }
@@ -324,8 +326,7 @@
             id="adr"
             rows="2"
             disabled={isReadOnly}
-            bind:value={form.address}
-          ></textarea>
+            bind:value={form.address}></textarea>
         </div>
         <div class="field">
           <label for="at">Account Type</label>
