@@ -193,7 +193,7 @@
         <section class="print-page">
             <div class="header-row">
                 <div class="title">
-                    MORNING ROUND [ {round.roundName} ] - ROUND {round.roundName}
+                    MORNING ROUND [ {round.roundName} ] - {round.deliveryPerson}
                 </div>
                 <div class="date-str">{formattedDate}</div>
             </div>

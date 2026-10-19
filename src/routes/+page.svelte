@@ -15,6 +15,10 @@
   import RoundForm from "$lib/RoundForm.svelte";
   import DeliveriesDashboard from "$lib/DeliveriesDashboard.svelte";
   import DeliveryNotePrintView from "$lib/DeliveryNotePrintView.svelte";
+  import StreetsDashboard from "$lib/StreetsDashboard.svelte";
+  import StreetOrderManager from "$lib/StreetOrderManager.svelte";
+  import DeliveryBandTable from "$lib/DeliveryBandTable.svelte";
+  import DeliveryBandForm from "$lib/DeliveryBandForm.svelte";
 
   let isAuthenticated = $state(false);
   let activeTab = $state("dashboard");
@@ -45,6 +49,10 @@
   // Single Invoice Print Controller States
   let isSingleBillOpen = $state(false);
   let targetSingleCustomer = $state(null);
+
+  let streetsSubView = $state("menu"); // "menu", "ordering"
+  let bandList = $state([]);
+  let selectedBand = $state(null);
 
   let totalDue = $derived(
     ledgerWeeks
@@ -127,7 +135,14 @@
 
   let selectedDeliveryNoteDate = $state(null);
 
+  let isSubscriptionValid = $state(true);
+  let licenseInputKey = $state("");
+  let subscriptionExpiryStr = $state("");
+
   $effect(() => {
+
+    checkLicenseStatus();
+
     if (activeSelectedWeek) {
       totalDueTillSelectedWeek = ledgerWeeks.reduce((sum, w) => {
         if (activeSelectedWeek) {
@@ -147,6 +162,36 @@
       amountPaid = totalDueTillSelectedWeek.toFixed(2);
     }
   });
+
+  async function checkLicenseStatus() {
+    try {
+      const res = await fetch("http://localhost:8080/api/license/status");
+      if (res.ok) {
+        const data = await res.json();
+        isSubscriptionValid = data.active;
+        subscriptionExpiryStr = data.expiryDate;
+      }
+    } catch (err) {
+      console.error("Failed to verify license status", err);
+    }
+  }
+
+  async function submitLicenseKey() {
+    const res = await fetch("http://localhost:8080/api/license/activate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: licenseInputKey }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      alert(data.message);
+      isSubscriptionValid = true;
+      licenseInputKey = "";
+      checkLicenseStatus();
+    } else {
+      alert(data.message || "Activation failed.");
+    }
+  }
 
   function closePaymentModal() {
     showPaymentModal = false;
@@ -592,6 +637,65 @@
     }
   }
 
+  async function loadBands() {
+    try {
+      const res = await fetch("http://localhost:8080/api/delivery-bands/all");
+      if (res.ok) bandList = await res.json();
+    } catch (err) {
+      console.error("Failed to load bands:", err);
+    }
+  }
+
+  async function saveBand(bandData) {
+    const res = await fetch("http://localhost:8080/api/delivery-bands/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bandData),
+    });
+    if (res.ok) {
+      alert("Delivery band saved successfully!");
+      streetsSubView = "bands";
+      loadBands();
+    }
+  }
+
+  async function updateBand(bandData) {
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/delivery-bands/update/${bandData.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bandData),
+        },
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        alert("Delivery band updated successfully!");
+
+        // Assign a new object reference to trigger Svelte 5 reactivity
+        selectedBand = { ...updated };
+        streetsSubView = "view-band";
+        loadBands();
+      }
+    } catch (err) {
+      console.error("Failed to update delivery band:", err);
+    }
+  }
+
+  async function deleteBand(bandData) {
+    if (confirm(`Delete delivery band ${bandData.name}?`)) {
+      const res = await fetch(
+        `http://localhost:8080/api/delivery-bands/delete/${bandData.id}`,
+        { method: "DELETE" },
+      );
+      if (res.ok) {
+        streetsSubView = "bands";
+        loadBands();
+      }
+    }
+  }
+
   // Handler function triggered by the existing list action button
   function triggerSingleBillView(customer) {
     targetSingleCustomer = customer;
@@ -611,6 +715,10 @@
     }
     if (activeTab === "deliveries") {
       deliveriesSubView = "menu";
+    }
+    if (activeTab === "streets") {
+      streetsSubView = "menu";
+      if (isAuthenticated) loadRounds();
     }
     if (selectedYear === currentYear && selectedMonth > currentMonthNumber) {
       selectedMonth = currentMonthNumber;
@@ -634,7 +742,31 @@
   }
 </script>
 
-{#if !isAuthenticated}
+{#if !isSubscriptionValid}
+  <div class="license-lockdown-container">
+    <div class="lockdown-card">
+      <h2>🔒 Application Subscription Expired</h2>
+      <p>
+        Your subscription has ended or requires activation to continue using
+        News Master.
+      </p>
+      <p class="sub-text">
+        Please enter the license key provided by the application owner.
+      </p>
+
+      <div class="license-input-group">
+        <input
+          type="text"
+          bind:value={licenseInputKey}
+          placeholder="Enter License Key (e.g., NEWS-365-...)"
+        />
+        <button class="primary-activate-btn" onclick={submitLicenseKey}
+          >Activate License</button
+        >
+      </div>
+    </div>
+  </div>
+{:else if !isSubscriptionValid == false && !isAuthenticated}
   <LoginCard onLoginSuccess={() => (isAuthenticated = true)} />
 {:else if activeTab === "deliveries" && deliveriesSubView === "monthly"}
   <MonthlyPrintView
@@ -788,6 +920,44 @@
           onUpdate={updateRound}
           onDelete={deleteRound}
           onBack={() => (activeTab = "rounds")}
+        />
+      {:else if activeTab === "streets" && streetsSubView === "menu"}
+        <StreetsDashboard
+          onOpenOrdering={() => (streetsSubView = "ordering")}
+          onOpenBands={() => {
+            streetsSubView = "bands";
+            loadBands();
+          }}
+          onBackToDashboard={() => (activeTab = "dashboard")}
+        />
+      {:else if activeTab === "streets" && streetsSubView === "ordering"}
+        <StreetOrderManager
+          {roundList}
+          onBack={() => (streetsSubView = "menu")}
+        />
+      {:else if activeTab === "streets" && streetsSubView === "bands"}
+        <DeliveryBandTable
+          {bandList}
+          onViewBand={(band) => {
+            selectedBand = band;
+            streetsSubView = "view-band";
+          }}
+          onPrepareNew={() => (streetsSubView = "add-band")}
+          onBackToHub={() => (streetsSubView = "menu")}
+        />
+      {:else if activeTab === "streets" && streetsSubView === "add-band"}
+        <DeliveryBandForm
+          mode="add"
+          onSave={saveBand}
+          onBack={() => (streetsSubView = "bands")}
+        />
+      {:else if activeTab === "streets" && streetsSubView === "view-band"}
+        <DeliveryBandForm
+          mode="view"
+          bandData={selectedBand}
+          onUpdate={updateBand}
+          onDelete={deleteBand}
+          onBack={() => (streetsSubView = "bands")}
         />
       {:else if activeTab === "ledger"}
         <div class="ledger-container-inline">
@@ -1914,5 +2084,81 @@
   /* Target Mozilla Firefox */
   input[type="number"] {
     -moz-appearance: textfield;
+  }
+
+  .license-lockdown-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #0f172a;
+    font-family: inherit;
+  }
+
+  .lockdown-card {
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    width: 450px;
+    max-width: 90%;
+    text-align: center;
+    border: 1px solid #334155;
+  }
+
+  .lockdown-card h2 {
+    margin-top: 0;
+    color: #f43f5e;
+    font-size: 22px;
+  }
+
+  .lockdown-card p {
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .sub-text {
+    margin-bottom: 24px;
+    font-size: 13.5px !important;
+  }
+
+  .license-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .license-input-group input {
+    padding: 12px 16px;
+    border-radius: 6px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #fff;
+    font-size: 15px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .license-input-group input:focus {
+    outline: none;
+    border-color: #38bdf8;
+  }
+
+  .primary-activate-btn {
+    padding: 12px 20px;
+    background: #0284c7;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .primary-activate-btn:hover {
+    background: #0ea5e9;
   }
 </style>
